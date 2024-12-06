@@ -1,11 +1,12 @@
 from itertools import count
-
+import sqlite3 as sq
 import emoji
 import sqlite3
 from aiogram import F, Router, Bot
 from aiogram.filters import CommandStart, Command
 from aiogram.types import Message, CallbackQuery, callback_query, InputFile
-
+from app.pygithub import upload_to_github
+import aiohttp
 import app.keyboards as kb
 from app import database as db
 import os
@@ -51,20 +52,20 @@ async def admin_panel(message: Message):
                          reply_markup=kb.admin)
 
 class ProfileStates(StatesGroup):
-    step = State()  # Хранит текущий индекс профиля
+    step = State()
 
 @router.message((F.text == emoji.emojize('Перелік профілів :clipboard:')) | (F.text == '/profiles'))
 async def profiles(message: Message, state: FSMContext):
     profiles_list = await db.get_profiles()
-    if not profiles_list:  # Если нет профилей
+    if not profiles_list:
         await message.answer("Профілі не знайдені.")
         return
 
-    # Устанавливаем начальный индекс профиля в 0
+
     await state.set_state(ProfileStates.step)
     await state.update_data(step=0)
 
-    # Отправляем первый профиль
+
     response = (
         f"<b>Назва профілю:</b> {profiles_list[0]['profile_name']}\n"
         f"<b>Інформація:</b> {profiles_list[0]['profile_info']}"
@@ -74,7 +75,6 @@ async def profiles(message: Message, state: FSMContext):
 
 @router.callback_query(F.data == "next")
 async def about_next(callback_query: CallbackQuery, state: FSMContext):
-    # Получаем текущий шаг из состояния
     data = await state.get_data()
     step = data.get("step", 0) + 1
     print(step)
@@ -93,26 +93,56 @@ async def about_next(callback_query: CallbackQuery, state: FSMContext):
 
 @router.callback_query(F.data == "back")
 async def about_next(callback_query: CallbackQuery, state: FSMContext):
-    # Получаем текущий шаг из состояния
+
     profiles_list = await db.get_profiles()
     data = await state.get_data()
-    step = data.get("step", len(profiles_list)) - 1  # Переход к следующему профилю
+    step = data.get("step", len(profiles_list)) - 1
     print(step)
 
     if step >= 0:
-        # Обновляем сообщение с новым профилем
         response = (
             f"<b>Назва профілю:</b> {profiles_list[step]['profile_name']}\n"
             f"<b>Інформація:</b> {profiles_list[step]['profile_info']}"
         )
         await callback_query.message.edit_text(response, parse_mode='HTML', reply_markup=kb.profile_catalog )
 
-        # Сохраняем текущий индекс профиля
         await state.update_data(step=step)
     else:
         await callback_query.answer("Більше профілів немає.")
 
+class Call_Schedule(StatesGroup):
+    photo = State()
+@router.message(F.text == 'Час чрийому')
+async def call_schedule_admin(message: Message, state: FSMContext):
+    await message.answer("Пришліть фото часу чрийому")
+    await state.set_state(Call_Schedule.photo)
 
+@router.message(Call_Schedule.photo)
+async def call_schedule_set_photo(message: Message, state: FSMContext):
+    photo_id = message.photo[-1].file_id
+    await state.update_data(photo=photo_id)
+    with sq.connect("app/lyceum.db") as con:
+        cur = con.cursor()
+        cur.execute("""
+            INSERT INTO call_schedule(photo_id) VALUES (?)
+        """, (photo_id,))
+        con.commit()
+    await state.clear()
+
+    file_info = await bot.get_file(photo_id)
+    file_path = file_info.file_path
+
+    async with aiohttp.ClientSession() as session:
+        async with session.get(f"https://api.telegram.org/file/bot{os.getenv('BOT_API')}/{file_path}") as resp:
+            if resp.status == 200:
+                file_content = await resp.read()
+                file_name = f"{photo_id}.jpg"
+                photo_url = f"https://raw.githubusercontent.com/skachpro/photos_lyceum_bot/refs/heads/main/photos/{photo_id}.jpg"
+                result = upload_to_github(file_name, file_content)
+                await message.answer_photo(photo=photo_url)
+            else:
+                await message.answer("Не вдалось скачати фото.")
+    await message.answer("Фото збережено в базі")
 
 
 

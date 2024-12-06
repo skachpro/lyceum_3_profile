@@ -22,6 +22,7 @@ admin = ReplyKeyboardMarkup(keyboard=[
 ])
 
 admin_kbd = ReplyKeyboardMarkup(keyboard=[
+    [KeyboardButton(text=f"Час прийому")],
     [KeyboardButton(text="Вийти з Адмін панелі")]
 ])
 #Анкета
