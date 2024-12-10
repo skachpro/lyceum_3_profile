@@ -154,17 +154,19 @@ async def about_us(message: Message):
 # Налаштування
 @router.message(F.text == 'Час прийому 🕓')
 async def settings(message: Message):
-    #await message.answer(f"Налаштування")
     photo = await db.execute_query("""
-        SELECT photo_id FROM result_profile BY id DESC LIMIT 1
-    """,fetch="fetchone")
+        SELECT photo_id FROM result_profile ORDER BY id DESC LIMIT 1
+    """, fetch="fetchone")
+
     if photo:
         print(photo, "     1")
-        photo = f'https://raw.githubusercontent.com/skachpro/photos_lyceum_bot/master/{photo['photo_id']}.jpg'
-
+        photo = f"https://raw.githubusercontent.com/skachpro/photos_lyceum_bot/main/photos/{photo['photo_id']}.jpg"
     else:
         print(photo, "     2")
+        photo = "https://raw.githubusercontent.com/skachpro/photos_lyceum_bot/main/AgACAgIAAxkBAAIFjmdJ_SENu66ydLFppi5xgpJVTZpxAAIS4jEb1npRSizdC1npjreEAQADAgADeQADNgQ.jpg"  # Замените на дефолтный URL, если данных нет
+
     await message.answer_photo(photo=photo)
+
 
 # Почати Тестування
 @router.message(F.text == f"Почати тестування 💼")
