@@ -158,7 +158,11 @@ async def settings(message: Message):
     photo = await db.execute_query("""
         SELECT photo_id FROM result_profile BY id DESC LIMIT 1
     """,fetch="fetchone")
-    photo = f'https://raw.githubusercontent.com/skachpro/photos_lyceum_bot/master/{photo['photo_id']}.jpg'
+    if photo:
+        photo = f'https://raw.githubusercontent.com/skachpro/photos_lyceum_bot/master/{photo['photo_id']}.jpg'
+        print(photo, "     1")
+    else:
+        print(photo,"     2")
     await message.answer_photo(photo=photo)
 
 # Почати Тестування
