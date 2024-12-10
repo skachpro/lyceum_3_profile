@@ -175,7 +175,7 @@ future_profession = InlineKeyboardMarkup(inline_keyboard=[
 #анкета закінчилась
 
 socials_networks = InlineKeyboardMarkup(inline_keyboard=[
-    [InlineKeyboardButton(text=f'Наш Сайт {emoji.emojize(':globe_with_meridians:')}', url='http://tbl.km.ua/')],
+    [InlineKeyboardButton(text=f"Наш Сайт {emoji.emojize(':globe_with_meridians:')}", url="http://tbl.km.ua/")],
     [InlineKeyboardButton(text=f'Сторінка у Facebook {emoji.emojize(':bust_in_silhouette::blue_book:')}', url='https://www.instagram.com/tbl_khm/')],
     [InlineKeyboardButton(text=f'Інстаграм {emoji.emojize(':camera:')}', url='https://www.instagram.com/tbl_khm/')],
     [InlineKeyboardButton(text=f'Телеграм Канал {emoji.emojize(':loudspeaker:')}', url='t.me/TBLLiveUA')]
