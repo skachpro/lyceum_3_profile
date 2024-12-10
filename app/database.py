@@ -1,80 +1,107 @@
-import sqlite3 as sq
 
-with sq.connect('app/profile.db') as con:
-    cur = con.cursor()
+import os
+import pymysql
+from aiomysql import create_pool
+from aiomysql.pool import Pool
+from datetime import *
+import json
+db_pool: Pool | None = None
 
-    cur.execute("""
-    CREATE TABLE IF NOT EXISTS accounts(
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    user_id TEXT,
-    name TEXT,
-    username TEXT,
-    email TEXT
+
+async def init_db():
+    global db_pool
+    db_pool = await create_pool(
+        host=os.getenv("MYSQLHOST"),
+        user=os.getenv("MYSQLUSER"),
+        password=os.getenv("MYSQLPASSWORD"),
+        db=os.getenv("MYSQL_DATABASE"),
+        autocommit=True,
     )
+    print("Підключення до бази даних встановлено")
+
+
+async def close_db():
+    global db_pool
+    if db_pool:
+        db_pool.close()
+        await db_pool.wait_closed()
+        print("Підключення до бази даних закрито")
+
+
+def execute_query_sync(query, params=None):
+    connection = pymysql.connect(
+        host=os.getenv("MYSQLHOST"),
+        user=os.getenv("MYSQLUSER"),
+        password=os.getenv("MYSQLPASSWORD"),
+        database=os.getenv("MYSQL_DATABASE"),
+        autocommit=True,
+    )
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute(query, params or ())
+            if query.strip().lower().startswith("select"):
+                return cursor.fetchall()
+    finally:
+        connection.close()
+
+
+async def execute_query(query, params=None, fetch="fetchall"):
+    global db_pool
+    if not db_pool:
+        raise RuntimeError("Database pool is not initialized")
+    async with db_pool.acquire() as conn:
+        async with conn.cursor() as cur:
+            await cur.execute(query, params or ())
+            if query.strip().lower().startswith("select") and fetch == "fetchall":
+                return await cur.fetchall()
+            elif query.strip().lower().startswith("select") and fetch == "fetchone":
+                return await cur.fetchone()
+
+
+
+
+async def create_tables():
+    execute_query_sync("""
+        CREATE TABLE IF NOT EXISTS users_profile (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            user_id VARCHAR(255)
+        )
+    """)
+    execute_query_sync("""
+        CREATE TABLE IF NOT EXISTS profile_info
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            profile_name VARCHAR(255),
+            profile_info VARCHAR(255)
+    """)
+    execute_query_sync("""
+        CREATE TABLE IF NOT EXISTS rezult_profile
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            user_id VARCHAR(255),
+            result JSON
+    """)
+    execute_query_sync("""
+        CREATE TABLE IF NOT EXISTS time_vizit
+            id INT AUTI_INCREMENT PRIMARY KEY,
+            photo_id VARCHAR(255)
     """)
 
-    cur.execute("""
-    CREATE TABLE IF NOT EXISTS info(
-    user TEXT,
-    favourite_subj TEXT,
-    answers TEXT,
-    result TEXT
-    )
-    """)
+    print("Таблиці створено або вже існують")
 
-    cur.execute("""
-    CREATE TABLE IF NOT EXISTS profile(
-    profile_name TEXT,
-    profile_info TEXT
-    )
-    """)
-
-
-con = sq.connect('app/profile.db')
-cur = con.cursor()
-
-async def add_user_on_start(user_id, user_name, username):
-    user = cur.execute("SELECT * FROM accounts WHERE user_id = ?", (user_id,)).fetchone()
-    if not user:
-        cur.execute("""
-        INSERT INTO accounts (user_id, name, username) VALUES (?, ?, ?)
-        """, (user_id, user_name, username))
-        con.commit()
-
-async def add_profile( profile_name, profile_info):
-    profile = cur.execute("SELECT * FROM accounts WHERE user_id = ?", (profile_name,)).fetchone()
-    if not profile:
-        cur.execute("""
-            INSERT INTO profile ( profile_name, profile_info) VALUES (?, ?)
-            """, ( profile_name, profile_info))
-        con.commit()
-
+async def remember_me(user_id):
+    global db_pool
+    if not db_pool:
+        raise RuntimeError("Database pool is not initalized")
+    async with db_pool.acquire() as conn:
+        async with conn.cursor() as cur:
+            await cur.execute("""
+                INSERT INTO users_profile (user_id) VALUES(%s)
+            """, (user_id,))
 async def get_profiles():
-    with sq.connect('app/profile.db') as con:
-        con.row_factory = sq.Row  # Повертаємо словники
-        cur = con.cursor()
-
-        cur.execute("""
-        SELECT * FROM profile
-        """)
-        profiles = cur.fetchall()  # Отримуємо результати
-        return profiles
-
-async def add_subj(answer, user_id):
-    user = cur.execute("SELECT * FROM info WHERE user = ?", (user_id,)).fetchone()
-    if not user:
-        cur.execute("""
-            INSERT INTO info (user, favourite_subj) VALUES (?, ?)
-            """, (user_id, answer))
-        con.commit()
-
-
-# async def check_for_log(user_id, message):
-#     user = cur.execute("SELECT * FROM accounts WHERE user_id = ?", (user_id,)).fetchone()
-#     print("1")
-#     if user is None:
-#         answer = "Це знову ви?"
-#
-#
-#         await message.answer(answer)
-#         con.commit()
+    global db_pool
+    if not db_pool:
+        raise RuntimeError("Database pool is not initalized")
+    async with db_pool.acquire() as conn:
+        async with conn.cursor() as cur:
+            await cur.execute_query("""
+                SELECT * FROM profile_info
+            """)

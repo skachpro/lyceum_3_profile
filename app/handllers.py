@@ -35,8 +35,7 @@ class Test(StatesGroup):
 async def cmd_start(message: Message):
     user_id = message.from_user.id
     user_name = message.from_user.first_name
-    username = message.from_user.username
-    await db.add_user_on_start(user_id, user_name, username)
+    await db.remember_me(user_id)
     answer = f'<b>Вітаємо </b>{user_name}!\nПропонуємо нашу допомогу з вибору профілю для майбутніх Десятикласників.'
     # await message.answer(
     #     f"Вітаємо {user_name}!\nПропонуємо нашу допомогу з вибору профілю для майбутніх Десятикласників.",
@@ -112,22 +111,18 @@ async def about_next(callback_query: CallbackQuery, state: FSMContext):
 
 class Call_Schedule(StatesGroup):
     photo = State()
-@router.message(F.text == 'Час чрийому')
+@router.message(F.text == 'Час прийому')
 async def call_schedule_admin(message: Message, state: FSMContext):
-    await message.answer("Пришліть фото часу чрийому")
+    await message.answer("Пришліть фото часу прийому")
     await state.set_state(Call_Schedule.photo)
 
 @router.message(Call_Schedule.photo)
 async def call_schedule_set_photo(message: Message, state: FSMContext):
     photo_id = message.photo[-1].file_id
     await state.update_data(photo=photo_id)
-    with sq.connect("app/lyceum.db") as con:
-        cur = con.cursor()
-        cur.execute("""
-            INSERT INTO call_schedule(photo_id) VALUES (?)
+    await db.execute_query("""
+            INSERT INTO time_vizit (photo_id) VALUES (%s)
         """, (photo_id,))
-        con.commit()
-    await state.clear()
 
     file_info = await bot.get_file(photo_id)
     file_path = file_info.file_path
@@ -162,7 +157,10 @@ async def about_us(message: Message):
 @router.message(F.text == 'Час прийому 🕓')
 async def settings(message: Message):
     #await message.answer(f"Налаштування")
-    photo = 'https://raw.githubusercontent.com/skachpro/photos_lyceum_bot/master/rozklad.png'
+    photo = await db.execute_query("""
+        SELECT photo_id FROM result_profile BY id DESC LIMIT 1
+    """,fetch="fetchone")
+    photo = f'https://raw.githubusercontent.com/skachpro/photos_lyceum_bot/master/{photo['photo_id']}.jpg'
     await message.answer_photo(photo=photo)
 
 # Почати Тестування
@@ -256,17 +254,32 @@ async def test_end(callback_query: CallbackQuery, state: FSMContext):
         elif value == 'art':
             art += 1
 
-    await callback_query.message.edit_text(f'<b>Схильність до:</b>\n'
-                                        f'<code><pre>Математики: {math*16}%\n'
-                                        f'Інформатики: {it*16}%\n'
-                                        f'Історії {history*16}%\n'
-                                        f'Географії: {geography*16}%\n'
-                                        f'Хімії/Біології: {chem_bio*16}%\n'
-                                        f'Української філології: {ukr_philo*16}%\n'
-                                        f'Правового профілю: {law*16}%\n'
-                                        f'Іноземної філології: {foreign_philo*16}%\n'
-                                        f'Військово/Спортивного профілю: {sports_military*16}%\n'
-                                        f'Художньо-Естетичного профілю: {art*16}%\n</pre></code>', parse_mode='html')
+    await callback_query.message.edit_text(
+        f"<b>Схильність до:</b>\n"
+        f"<code>Математики: {math * 16}%\n"
+        f"Інформатики: {it * 16}%\n"
+        f"Історії: {history * 16}%\n"
+        f"Географії: {geography * 16}%\n"
+        f"Хімії/Біології: {chem_bio * 16}%\n"
+        f"Української філології: {ukr_philo * 16}%\n"
+        f"Правового профілю: {law * 16}%\n"
+        f"Іноземної філології: {foreign_philo * 16}%\n"
+        f"Військово/Спортивного профілю: {sports_military * 16}%\n"
+        f"Художньо-Естетичного профілю: {art * 16}%</code>",
+        parse_mode="html"
+    )
+    data = {
+        "Математика": math * 16,
+        "Інформатика": it * 16,
+        "Історія": history * 16,
+        "Географія": geography * 16,
+        "Хімія/Біологія": chem_bio * 16,
+        "Українська філологія": ukr_philo * 16,
+        "Правовий профіль": law * 16,
+        "Іноземна філологія": foreign_philo * 16,
+        "Військово/Спортивний профіль": sports_military * 16,
+        "Художньо-Естетичний профіль": art * 16
+    }
     await state.clear()
 
 
