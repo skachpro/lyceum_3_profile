@@ -6,7 +6,7 @@ from app.handllers import router
 from app.database import init_db, close_db, create_tables  # Імпорт функцій для роботи з базою
 
 load_dotenv()
-bot = Bot(token=os.getenv("BOT_API"))
+bot = Bot(token=os.getenv("API_TOKEN"))
 
 # Ініціалізація диспетчера
 dp = Dispatcher()
