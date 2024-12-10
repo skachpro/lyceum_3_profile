@@ -1,7 +1,6 @@
-from itertools import count
-import sqlite3 as sq
+
 import emoji
-import sqlite3
+
 from aiogram import F, Router, Bot
 from aiogram.filters import CommandStart, Command
 from aiogram.types import Message, CallbackQuery, callback_query, InputFile
@@ -13,8 +12,7 @@ import os
 from dotenv import load_dotenv
 from aiogram.fsm.state import StatesGroup, State
 from aiogram.fsm.context import FSMContext
-
-from app.keyboards import skills
+from aiogram.filters.logic import or_f
 
 load_dotenv()
 bot = Bot(token=os.getenv('API_TOKEN'))
@@ -53,7 +51,7 @@ async def admin_panel(message: Message):
 class ProfileStates(StatesGroup):
     step = State()
 
-@router.message((F.text == emoji.emojize('Перелік профілів :clipboard:')) | (F.text == '/profiles'))
+@router.message(or_f((F.text == emoji.emojize("Перелік профілів 📋")),(F.text == '/profiles')))
 async def profiles(message: Message, state: FSMContext):
     profiles_list = await db.get_profiles()
     if not profiles_list:
@@ -142,7 +140,7 @@ async def call_schedule_set_photo(message: Message, state: FSMContext):
 
 
 # Соціальні мережі
-@router.message((F.text == f'Соціальні мережі {emoji.emojize(':globe_with_meridians:')}') | (F.text == '/social_networks'))
+@router.message(F.text == f'Соціальні мережі 🌐')
 async def socials(message: Message):
     await message.answer(f"Соціальні мережі: \n", reply_markup=kb.socials_networks)
 
@@ -164,7 +162,7 @@ async def settings(message: Message):
     await message.answer_photo(photo=photo)
 
 # Почати Тестування
-@router.message((F.text == emoji.emojize(f"Почати тестування {emoji.emojize(':briefcase:')}")) | (F.text == '/start_testing'))
+@router.message(F.text == f"Почати тестування 💼")
 async def start_test(message: Message, state:FSMContext):
     await message.answer("Тестування почато.")
     await state.set_state(Test.fav_subj)
