@@ -68,10 +68,11 @@ async def create_tables():
         )
     """)
     execute_query_sync("""
-        CREATE TABLE IF NOT EXISTS profile_info
+        CREATE TABLE IF NOT EXISTS profile_info (
             id INT AUTO_INCREMENT PRIMARY KEY,
             profile_name VARCHAR(255),
             profile_info VARCHAR(255)
+        )
     """)
     execute_query_sync("""
         CREATE TABLE IF NOT EXISTS rezult_profile
