@@ -3,36 +3,36 @@ import os
 from aiogram import Dispatcher, Bot
 from dotenv import load_dotenv
 from app.handllers import router
-from app.database import init_db, close_db, create_tables  # Імпорт функцій для роботи з базою
+from app.database import init_db, close_db, create_tables
 
 load_dotenv()
 bot = Bot(token=os.getenv("API_TOKEN"))
 
-# Ініціалізація диспетчера
+
 dp = Dispatcher()
 
 
 async def on_startup():
-    """Функція для запуску всіх необхідних процесів при старті бота."""
+
     print("Бот успішно запущений")
-    await init_db()  # Ініціалізуємо підключення до бази даних
-    await create_tables()  # Створюємо таблиці, якщо їх ще немає
+    await init_db()
+    await create_tables()
 
 
 async def on_shutdown():
-    """Функція для завершення всіх процесів при зупинці бота."""
+
     print("Бот зупиняється...")
-    await close_db()  # Закриваємо підключення до бази даних
+    await close_db()
 
 
 async def main():
-    """Основна функція для запуску бота."""
-    dp.include_router(router)  # Підключаємо маршрутизатор
-    await on_startup()  # Запускаємо стартові процеси
+
+    dp.include_router(router)
+    await on_startup()
     try:
-        await dp.start_polling(bot)  # Запускаємо лонг-полінг
+        await dp.start_polling(bot)
     finally:
-        await on_shutdown()  # Завершуємо всі процеси при зупинці
+        await on_shutdown()
 
 
 if __name__ == "__main__":
